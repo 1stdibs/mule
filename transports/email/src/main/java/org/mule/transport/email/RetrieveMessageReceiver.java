@@ -146,7 +146,7 @@ public class RetrieveMessageReceiver extends AbstractPollingMessageReceiver impl
                     try
                     {
                         if (!messages[i].getFlags().contains(Flags.Flag.DELETED)
-                            && !messages[i].getFlags().contains(Flags.Flag.SEEN))
+                            )//&& !messages[i].getFlags().contains(Flags.Flag.SEEN)) maybe we'll make this configurable in the future, but for now this is a problem
                         {
                             try
                             {
