@@ -50,7 +50,7 @@ public class MuleObjectStoreManager
     @Override
     public <T extends ObjectStore<? extends Serializable>> T getObjectStore(String name, boolean isPersistent)
     {
-        return internalCreateStore(getBaseStore(isPersistent), name, 0, 0, 0);
+        return internalCreateStore(getBaseStore(isPersistent), name, UNBOUNDED, UNBOUNDED, 0);
     }
 
     @Override
@@ -59,17 +59,38 @@ public class MuleObjectStoreManager
         return internalCreateStore(getBaseStore(isPersistent), name, maxEntries, entryTTL, expirationInterval);
     }
 
+    public <T extends ObjectStore<? extends Serializable>> T getUserObjectStore(String name,
+                                                                                boolean isPersistent)
+    {
+        return internalCreateStore(getBaseUserStore(isPersistent), name, UNBOUNDED, UNBOUNDED, 0);
+    }
+
+    public <T extends ObjectStore<? extends Serializable>> T getUserObjectStore(String name,
+                                                                                boolean isPersistent,
+                                                                                int maxEntries,
+                                                                                int entryTTL,
+                                                                                int expirationInterval)
+    {
+        return internalCreateStore(getBaseUserStore(isPersistent), name, maxEntries, entryTTL,
+            expirationInterval);
+    }
+
     @SuppressWarnings({"unchecked"})
     synchronized public <T extends ObjectStore<? extends Serializable>> T internalCreateStore(ListableObjectStore<? extends Serializable> baseStore, String name,
                                                                                               int maxEntries,
                                                                                               int entryTTL,
                                                                                               int expirationInterval)
     {
+
+        checkArgument(maxEntries >= UNBOUNDED, String.format("maxEntries cannot be lower than %d", UNBOUNDED));
+        checkArgument(entryTTL >= UNBOUNDED, String.format("entryTTL cannot be lower than %d", UNBOUNDED));
+
         if (stores.containsKey(name))
         {
             return (T) stores.get(name);
         }
-        T store= null;
+
+        T store = null;
         try
         {
             store = this.<T>getPartitionFromBaseObjectStore(baseStore,name);
@@ -79,7 +100,7 @@ public class MuleObjectStoreManager
             //TODO In order to avoid breaking backward compatibility. In the future this method must throw object store creation exception
             throw new MuleRuntimeException(e);
         }
-        if (maxEntries == 0)
+        if (maxEntries == UNBOUNDED && entryTTL == UNBOUNDED)
         {
             return putInStoreMap(name,store);
         }
@@ -87,6 +108,30 @@ public class MuleObjectStoreManager
         {
             return getMonitorablePartition(name,baseStore,store,entryTTL,maxEntries,expirationInterval);
         }
+    }
+
+    private void checkArgument(boolean condition, String message)
+    {
+        if( !condition )
+        {
+            throw new RuntimeException(message);
+        }
+    }
+
+    private <T extends ListableObjectStore<? extends Serializable>> T getBaseUserStore(boolean persistent)
+    {
+        T baseStore;
+        if (persistent)
+        {
+            baseStore = (T) muleContext.getRegistry().lookupObject(
+                MuleProperties.DEFAULT_USER_OBJECT_STORE_NAME);
+        }
+        else
+        {
+            baseStore = (T) muleContext.getRegistry().lookupObject(
+                MuleProperties.DEFAULT_USER_TRANSIENT_OBJECT_STORE_NAME);
+        }
+        return baseStore;
     }
 
     private <T extends ListableObjectStore<? extends Serializable>> T getBaseStore(boolean persistent)
@@ -254,6 +299,14 @@ public class MuleObjectStoreManager
             else
             {
                 //there is nothing we can do
+            }
+            try
+            {
+                stores.values().remove(store);
+            }
+            catch(Exception e)
+            {
+                logger.warn("Can not remove object store" + store.toString(), e);
             }
             try
             {

@@ -7,6 +7,7 @@
        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
        http://www.mulesoft.org/schema/mule/jetty-ssl http://www.mulesoft.org/schema/mule/jetty-ssl/current/mule-jetty-ssl.xsd">
 
+
     <jetty:connector name="connector-default-acceptors">
         <jetty:tls-client path="clientKeystore" storePassword="mulepassword"/>
         <jetty:tls-key-store path="serverKeystore" keyPassword="mulepassword" storePassword="storepassword"/>

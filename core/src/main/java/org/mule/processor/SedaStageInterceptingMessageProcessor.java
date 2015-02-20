@@ -85,9 +85,7 @@ public class SedaStageInterceptingMessageProcessor extends AsyncInterceptingMess
             {
                 queueStatistics.incQueuedEvent();
             }
-            // Events to be processed asynchronously should be copied before they are queued, otherwise
-            // concurrent modification of the event could occur.
-            enqueue(DefaultMuleEvent.copy(event));
+            enqueue(event);
         }
         catch (Exception e)
         {
@@ -113,7 +111,7 @@ public class SedaStageInterceptingMessageProcessor extends AsyncInterceptingMess
             logger.debug(MessageFormat.format("{1}: Putting event on queue {2}", queue.getName(),
                 getStageDescription(), event));
         }
-        queue.put(event);
+        queue.put(DefaultMuleEvent.copy(event));
         fireAsyncScheduledNotification(event);
     }
 

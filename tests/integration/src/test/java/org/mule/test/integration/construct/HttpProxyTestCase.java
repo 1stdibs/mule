@@ -7,7 +7,7 @@
 package org.mule.test.integration.construct;
 
 import org.mule.api.MuleMessage;
-import org.mule.module.client.MuleClient;
+import org.mule.api.client.MuleClient;
 import org.mule.tck.AbstractServiceAndFlowTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.util.StringUtils;
@@ -35,7 +35,6 @@ public class HttpProxyTestCase extends AbstractServiceAndFlowTestCase
     public HttpProxyTestCase(ConfigVariant variant, String configResources)
     {
         super(variant, configResources);
-
     }
 
     @Parameters
@@ -53,7 +52,7 @@ public class HttpProxyTestCase extends AbstractServiceAndFlowTestCase
     protected void doSetUp() throws Exception
     {
         super.doSetUp();
-        muleClient = new MuleClient(muleContext);
+        muleClient = muleContext.getClient();
     }
 
     @Test
@@ -130,7 +129,7 @@ public class HttpProxyTestCase extends AbstractServiceAndFlowTestCase
                              final String expectedResult,
                              final Map<String, String> extraHeaders) throws Exception
     {
-        final Map<String, String> headers = new HashMap<String, String>(Collections.singletonMap(
+        final Map<String, Object> headers = new HashMap<String, Object>(Collections.singletonMap(
             "X-Custom-Header", "w00t"));
         headers.putAll(extraHeaders);
 
