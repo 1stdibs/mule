@@ -6,24 +6,13 @@
  */
 package org.mule.transport.email;
 
-import org.mule.api.MuleException;
-import org.mule.api.MuleMessage;
-import org.mule.api.MuleRuntimeException;
-import org.mule.api.construct.FlowConstruct;
-import org.mule.api.endpoint.InboundEndpoint;
-import org.mule.api.lifecycle.CreateException;
-import org.mule.api.transport.Connector;
-import org.mule.api.transport.ReceiveException;
-import org.mule.transport.AbstractPollingMessageReceiver;
-import org.mule.transport.email.i18n.EmailMessages;
-import org.mule.util.FileUtils;
-import org.mule.util.StringUtils;
-import org.mule.util.UUID;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.mail.Address;
@@ -36,6 +25,21 @@ import javax.mail.event.MessageCountEvent;
 import javax.mail.event.MessageCountListener;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+
+import org.mule.api.MuleException;
+import org.mule.api.MuleMessage;
+import org.mule.api.MuleRuntimeException;
+import org.mule.api.construct.FlowConstruct;
+import org.mule.api.endpoint.InboundEndpoint;
+import org.mule.api.lifecycle.CreateException;
+import org.mule.api.transport.Connector;
+import org.mule.api.transport.PropertyScope;
+import org.mule.api.transport.ReceiveException;
+import org.mule.transport.AbstractPollingMessageReceiver;
+import org.mule.transport.email.i18n.EmailMessages;
+import org.mule.util.FileUtils;
+import org.mule.util.StringUtils;
+import org.mule.util.UUID;
 
 /**
  * Poll a mailbox for messages, remove the messages and route them as events into
@@ -152,8 +156,33 @@ public class RetrieveMessageReceiver extends AbstractPollingMessageReceiver impl
                             {
                                 MimeMessage mimeMessage = new MimeMessage((MimeMessage) messages[i]);
                                 storeMessage(mimeMessage);
-                                message = createMuleMessage(mimeMessage, endpoint.getEncoding());
-
+//                                message = createMuleMessage(mimeMessage, endpoint.getEncoding());
+                                try {
+									message = createMuleMessage(mimeMessage, endpoint.getEncoding());
+								} catch (Exception e) {
+									StringBuffer metaData = new StringBuffer();
+									
+									if(mimeMessage!=null) {
+										String from = mimeMessage.getFrom()!=null && mimeMessage.getFrom().length>0 ? Arrays.toString(mimeMessage.getFrom()):"";
+										String recipients = mimeMessage.getAllRecipients()!=null && mimeMessage.getAllRecipients().length>0 ?Arrays.toString(mimeMessage.getAllRecipients()):"";
+										String subject = mimeMessage.getSubject();
+										String messageId = mimeMessage.getMessageID();
+										
+										metaData.append("Message-id: ").append(messageId).append("\n").append("From: ").append(from).append("\n").append("To: ").append(recipients).append("\n").append("Subject: ").append(subject);
+										
+										StringWriter sw = new StringWriter();
+										PrintWriter pw = new PrintWriter(sw);
+										e.printStackTrace(pw);
+										String errorDetails  = sw.toString();
+										
+										metaData.append("\n\nError Details: "+errorDetails);
+									}
+									message = createNullMuleMessage();
+									message.setPayload("Payload");
+									message.setProperty("PARSING_ERROR", Boolean.TRUE, PropertyScope.OUTBOUND);
+									message.setProperty("ERROR_DETAILS", metaData, PropertyScope.OUTBOUND);
+								}
+                            
                                 if (castConnector().isDeleteReadMessages())
                                 {
                                     if (moveToFolder != null)
